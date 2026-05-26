@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+/* ============================================
+   GLOBAL — Neo Minimalism + Grainy Blur
+   ============================================ */
+body {
+  margin: 0; width: 1920px; height: 1080px; overflow: hidden;
+  background: #FAFAF8;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 400;
+}
+
+.scene {
+  position: absolute; top: 0; left: 0;
+  width: 1920px; height: 1080px; overflow: hidden;
+}
+
+.noise-overlay {
+  position: fixed; inset: 0; z-index: 9998; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.025; mix-blend-mode: multiply;
+}
+
+.blob {
+  position: absolute; border-radius: 50%; pointer-events: none;
+  filter: blur(100px); opacity: 0.22;
+}
+.blob-warm {
+  background: radial-gradient(circle, rgba(245,235,220,0.5) 0%, transparent 70%);
+}
+
+.scene-content {
+  display: flex; flex-direction: column; justify-content: center;
+  width: 100%; height: 100%;
+  padding: 100px 160px; gap: 32px; box-sizing: border-box;
+}
+
+.display {
+  font-family: 'Newsreader', 'Noto Serif SC', serif;
+  font-weight: 700; letter-spacing: -0.03em; line-height: 1.05;
+}
+
+.body-text {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 32px; color: #666666; line-height: 1.65;
+}
+.body-text strong { color: #1A1A1A; font-weight: 600; }
+
+.label-mono {
+  font-family: 'Geist Mono', 'JetBrains Mono', monospace;
+  font-size: 18px; color: #999999; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.glass-card {
+  background: rgba(255,255,255,0.7); border: 1px solid rgba(26,26,26,0.06);
+  border-radius: 24px; padding: 48px 56px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+  position: relative; overflow: hidden;
+}
+.glass-card::before {
+  content: ''; position: absolute; top: 0; left: 32px; right: 32px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+}
+
+.divider { width: 80px; height: 2px; background: #1A1A1A; }
+
+.scene-num {
+  position: absolute; top: 60px; right: 80px;
+  font-family: 'Newsreader', serif; font-size: 180px;
+  font-weight: 300; color: #E5E5E3;
+  user-select: none; z-index: 0;
+}
+
+.quote-block {
+  display: flex; align-items: flex-start; gap: 24px;
+  padding: 36px 48px; border-left: 4px solid #1A1A1A;
+  background: rgba(255,255,255,0.35); border-radius: 0 16px 16px 0;
+}
+.quote-mark {
+  font-family: 'Newsreader', serif;
+  font-size: 80px; font-weight: 900; line-height: 0.8;
+  color: #E5E5E3; flex-shrink: 0;
+}
+
+.concept-grid { display: flex; flex-wrap: wrap; gap: 20px; }
+.concept-card {
+  flex: 1 1 260px; padding: 36px 32px;
+  border: 1px solid #E5E5E3; border-radius: 16px;
+  background: rgba(255,255,255,0.45);
+}
+
+.pipeline { display: flex; align-items: center; gap: 12px; }
+.pipeline-step {
+  flex: 1; padding: 28px 20px; text-align: center;
+  border: 1px solid #E5E5E3; border-radius: 14px;
+  background: rgba(255,255,255,0.5);
+}
+.pipeline-arrow { font-size: 28px; color: #ccc; flex-shrink: 0; }
+
+.summary-table {
+  border: 1px solid #E5E5E3; border-radius: 14px; overflow: hidden;
+  background: #E5E5E3; display: grid; grid-template-columns: 1fr 2fr; gap: 1px;
+}
+.summary-row { display: contents; }
+.summary-cell {
+  padding: 24px 32px; background: #FAFAF8;
+  font-size: 28px; line-height: 1.4;
+}
+.summary-cell:first-child {
+  font-family: 'Geist Mono', monospace; font-weight: 500;
+  color: #666; font-size: 22px;
+}
+
+.accent-pink { color: #FF6B9D; }
+.accent-orange { color: #FF7A45; }
+.accent-green { color: #52C41A; }
+.accent-purple { color: #722ED1; }
+.accent-blue { color: #1890FF; }
+.border-pink { border-left-color: #FF6B9D !important; }
+.border-orange { border-left-color: #FF7A45 !important; }
+.border-green { border-left-color: #52C41A !important; }
+.border-purple { border-left-color: #722ED1 !important; }
+.border-blue { border-left-color: #1890FF !important; }
+
+/* Scene visibility: scene 1 visible, 2-13 hidden */
+#scene1 { z-index: 1; }
+#scene2, #scene3, #scene4, #scene5, #scene6,
+#scene7, #scene8, #scene9, #scene10, #scene11,
+#scene12, #scene13 { opacity: 0; z-index: 1; }
+</style>
+</head>
+<body>
+
+<div id="root" data-composition-id="main" data-width="1920" data-height="1080" data-start="0" data-duration="122">
+
+<div class="noise-overlay" id="noise"></div>
+
+<!-- ================================================================
+     SCENE 1: TITLE (0-6s)
+     ================================================================ -->
+<div id="scene1" class="scene" style="background:linear-gradient(135deg,#FAFAF8 0%,#F5F0E8 50%,#FAFAF8 100%);">
+  <div class="blob blob-warm" style="width:450px;height:450px;top:-8%;right:-8%;" id="blob1a"></div>
+  <div class="blob blob-warm" style="width:320px;height:320px;bottom:-12%;left:-6%;opacity:0.16;" id="blob1b"></div>
+  <div class="scene-content" id="sc1">
+    <span class="label-mono" id="s1-label">Vibe Coding 入门指南</span>
+    <h1 class="display" id="s1-title" style="font-size:110px;max-width:950px;">五个概念<span style="font-weight:300;">，</span><br>看懂 Vibe Coding<br>是怎么运转的</h1>
+    <div class="divider" id="s1-divider"></div>
+    <p class="body-text" id="s1-sub" style="max-width:600px;">Subagent · Hooks · MCP · Skill · Claude.md</p>
+  </div>
+</div>
+
+<!-- ================================================================
+     SCENE 2: PHENOMENON (6-26s)
+     ================================================================ -->
+<div id="scene2" class="scene" style="background:#FAFAF8;">
+  <div class="blob blob-warm" style="width:380px;height:380px;bottom:-10%;right:-6%;opacity:0.18;" id="blob2a"></div>
+  <div class="scene-content" id="sc2" style="padding-left:200px;">
+    <span class="label-mono" id="s2-label">你大概已经见过了</span>
+    <h2 class="display" id="s2-title" style="font-size:86px;max-width:900px;">打字就能出网站<br>这不是魔术</h2>
+    <div class="quote-block" id="s2-quote" style="max-width:750px;">
+      <span class="quote-mark">"</span>
+      <p class="body-text" style="margin:0;">有人在编辑器里打一段中文，AI 自动生成整套代码，一个按钮，网站就上线了。<strong>你不用写代码，你只需要描述你想要什么。</strong></p>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SCENE 3: PROBLEM (26-42s)
+     ================================================================ -->
+<div id="scene3" class="scene" style="background:#F5F3F0;">
+  <div class="scene-num" id="s3-num">03</div>
+  <div class="scene-content" id="sc3">
+    <span class="label-mono" id="s3-label">为什么需要这套体系</span>
+    <h2 class="display" id="s3-title" style="font-size:72px;max-width:850px;">只用基础对话<br>你很快就会撞到天花板</h2>
+    <div class="glass-card" id="s3-card" style="max-width:650px;">
+      <div style="display:flex;flex-direction:column;gap:24px;">
+        <div style="display:flex;align-items:flex-start;gap:20px;"><span style="font-size:32px;flex-shrink:0;">↗</span><span class="body-text" style="margin:0;">上下文太长，AI 开始"忘记"你最早说过的话</span></div>
+        <div style="display:flex;align-items:flex-start;gap:20px;"><span style="font-size:32px;flex-shrink:0;">↗</span><span class="body-text" style="margin:0;">每次新对话都要重新介绍项目背景和规则</span></div>
+        <div style="display:flex;align-items:flex-start;gap:20px;"><span style="font-size:32px;flex-shrink:0;">↗</span><span class="body-text" style="margin:0;">手动复制粘贴，重复描述同一种工作流程</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SCENE 4: OVERVIEW (42-56s)
+     ================================================================ -->
+<div id="scene4" class="scene" style="background:#FAFAF8;">
+  <div class="scene-num" id="s4-num">04</div>
+  <div class="blob blob-warm" style="width:300px;height:300px;top:-10%;right:-5%;opacity:0.15;" id="blob4a"></div>
+  <div class="scene-content" id="sc4" style="padding:80px 140px;">
+    <span class="label-mono" id="s4-label">先认识这五个概念</span>
+    <h2 class="display" id="s4-title" style="font-size:64px;max-width:900px;">五个关键词，一句话就能讲明白</h2>
+    <div class="concept-grid" id="s4-grid" style="margin-top:8px;">
+      <div class="concept-card"><div class="body-text" style="font-size:24px;margin:0 0 8px;"><strong>Subagent</strong></div><div class="body-text" style="font-size:20px;margin:0;color:#999;">主编把活外包给实习生团队</div></div>
+      <div class="concept-card"><div class="body-text" style="font-size:24px;margin:0 0 8px;"><strong>Hooks</strong></div><div class="body-text" style="font-size:20px;margin:0;color:#999;">自动驾驶的传感器</div></div>
+      <div class="concept-card"><div class="body-text" style="font-size:24px;margin:0 0 8px;"><strong>MCP</strong></div><div class="body-text" style="font-size:20px;margin:0;color:#999;">USB-C 万能转接头</div></div>
+      <div class="concept-card"><div class="body-text" style="font-size:24px;margin:0 0 8px;"><strong>Skill</strong></div><div class="body-text" style="font-size:20px;margin:0;color:#999;">预制菜操作说明书</div></div>
+      <div class="concept-card"><div class="body-text" style="font-size:24px;margin:0 0 8px;"><strong>Claude.md</strong></div><div class="body-text" style="font-size:20px;margin:0;color:#999;">贴在墙上的员工守则</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SCENE 5: SUBAGENT (56-79s)
+     ================================================================ -->
+<div id="scene5" class="scene" style="background:#F5F3F0;">
+  <div class="scene-num" id="s5-num">05</div>
+  <div class="scene-content" id="sc5">
+    <span class="label-mono accent-pink" id="s5-label">概念 01</span>
+    <h2 class="display" id="s5-title" style="font-size:70px;max-width:850px;">Subagent — <span style="font-weight:300;color:#FF6B9D;">主编的实习生团队</span></h2>
+    <div class="quote-block border-pink" id="s5-quote" style="max-width:750px;">
+      <span class="quote-mark" style="color:rgba(255,107,157,0.2);">"</span>
+      <p class="body-text" style="margin:0;">把<strong>"查资料"派给实习生 A</strong>，"整理数据"派给实习生 B，"找案例"派给实习生 C。每个人只干一件事，干完汇报。你汇总、审核、成稿。</p>
+    </div>
+    <p class="body-text" id="s5-desc" style="max-width:700px;margin-top:8px;">AI 在后台生成多个子代理，它们<strong>同时跑、互不干扰、并行加速</strong>。单个 AI 的注意力有限，Subagent 把大任务拆碎，每个小任务在干净的上下文里独立完成。</p>
+  </div>
+</div>
+
+<!-- ================================================================
+     SCENE 6: HOOKS (79-101s)
+     ================================================================ -->
+<div id="scene6" class="scene" style="background:#FAFAF8;">
+  <div class="scene-num" id="s6-num">06</div>
+  <div class="scene-content" id="sc6">
+    <span class="label-mono accent-orange" id="s6-label">概念 02</span>
+    <h2 class="display" id="s6-title" style="font-size:70px;max-width:850px;">Hooks — <span style="font-weight:300;color:#FF7A45;">自动驾驶的传感器</span></h2>
+    <div class="quote-block border-orange" id="s6-quote" style="max-width:750px;">
+      <span class="quote-mark" style="color:rgba(255,122,69,0.2);">"</span>
+      <p class="body-text" style="margin:0;">出门前"门一关"这个动作，自动触发<strong>"检查钥匙带没带"</strong>——不需要你每次手动提醒自己。</p>
+    </div>
+    <div class="glass-card" id="s6-card" style="max-width:650px;margin-top:8px;padding:36px 48px;">
+      <div style="display:flex;flex-direction:column;gap:18px;">
+        <div style="display:flex;align-items:flex-start;gap:16px;"><span style="color:#FF7A45;font-size:24px;">→</span><span class="body-text" style="font-size:26px;margin:0;"><strong>发消息前</strong> — 自动检查有没有粘贴密钥</span></div>
+        <div style="display:flex;align-items:flex-start;gap:16px;"><span style="color:#FF7A45;font-size:24px;">→</span><span class="body-text" style="font-size:26px;margin:0;"><strong>编辑文件后</strong> — 自动运行代码格式化</span></div>
+        <div style="display:flex;align-items:flex-start;gap:16px;"><span style="color:#FF7A45;font-size:24px;">→</span><span class="body-text" style="font-size:26px;margin:0;"><strong>会话结束后</strong> — 自动记录文件版本信息</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SCENE 7: MCP (101-125s)
+     ================================================================ -->
+<div id="scene7" class="scene" style="background:#F5F3F0;">
+  <div class="scene-num" id="s7-num">07</div>
+  <div class="scene-content" id="sc7">
+    <span class="label-mono accent-green" id="s7-label">概念 03</span>
+    <h2 class="display" id="s7-title" style="font-size:70px;max-width:850px;">MCP — <span style="font-weight:300;color:#52C41A;">USB-C 万能转接头</span></h2>
+    <div class="quote-block border-green" id="s7-quote" style="max-width:800px;">
+      <span class="quote-mark" style="color:rgba(82,196,26,0.2);">"</span>
+      <div>
+        <p class="body-text" style="margin:0 0 16px;"><strong>没有 MCP 之前：</strong>让 AI 查数据库、发 Slack、看 GitHub——每一项都要写一套定制代码，像每次出国要带不同转换插头。</p>
+        <p class="body-text" style="margin:0;"><strong style="color:#52C41A;">有了 MCP 之后：</strong>一个标准协议，所有工具即插即用。</p>
+      </div>
+    </div>
+    <p class="body-text" id="s7-desc" style="max-width:700px;margin-top:8px;">把 AI 想象成一位<strong>盲人 CEO</strong>。他的对讲机（MCP）可以命令不同部门替他干活——"帮我查一下上个月数据"、"在 GitHub 上创建一个 issue"。</p>
+  </div>
+</div>
+
+<!-- ================================================================
+     SCENE 8: SKILL (125-147s)
+     ================================================================ -->
+<div id="scene8" class="scene" style="background:#FAFAF8;">
+  <div class="scene-num" id="s8-num">08</div>
+  <div class="blob blob-warm" style="width:300px;height:300px;bottom:-8%;right:-5%;opacity:0.14;" id="blob8a"></div>
+  <div class="scene-content" id="sc8">
+    <span class="label-mono accent-purple" id="s8-label">概念 04</span>
+    <h2 class="display" id="s8-title" style="font-size:70px;max-width:850px;">Skill — <span style="font-weight:300;color:#722ED1;">预制菜操作说明书</span></h2>
+    <div class="quote-block border-purple" id="s8-quote" style="max-width:750px;">
+      <span class="quote-mark" style="color:rgba(114,46,209,0.2);">"</span>
+      <p class="body-text" style="margin:0;">你是导演，摄像师有一份<strong>"拍摄手册"</strong>——喊一句"拍街头风格"，他就自动按手册调好参数。不需要每次从头教光圈、构图、色调。</p>
+    </div>
+    <p class="body-text" id="s8-desc" style="max-width:700px;margin-top:8px;">每个 Skill 是一组"提示词 + 规则 + 参考材料"的打包。加载即用——写代码、写文章、画图表、做 PPT，任何需要反复执行且有固定方法论的任务。</p>
+  </div>
+</div>
+
+<!-- ================================================================
+     SCENE 9: CLAUDE.MD (147-165s)
+     ================================================================ -->
+<div id="scene9" class="scene" style="background:#F5F3F0;">
+  <div class="scene-num" id="s9-num">09</div>
+  <div class="scene-content" id="sc9">
+    <span class="label-mono accent-blue" id="s9-label">概念 05</span>
+    <h2 class="display" id="s9-title" style="font-size:70px;max-width:850px;">Claude.md — <span style="font-weight:300;color:#1890FF;">贴在墙上的员工守则</span></h2>
+    <div class="quote-block border-blue" id="s9-quote" style="max-width:750px;">
+      <span class="quote-mark" style="color:rgba(24,144,255,0.2);">"</span>
+      <p class="body-text" style="margin:0;">你开了一家餐厅。Claude.md 不是每天给厨师的"今天做什么菜"菜单——<strong>它是贴在厨房墙上的食品安全条例和出品标准</strong>。不用每天重读，但它永远在生效。</p>
+    </div>
+    <p class="body-text" id="s9-desc" style="max-width:700px;margin-top:8px;"><strong>没有 Claude.md：</strong>每次打开 AI，先花 5-10 分钟介绍自己。AI 像第一天入职的新同事。<br><strong>有 Claude.md：</strong>AI 在对话开始前被"预加载"了关于你的一切。消除每一次对话的冷启动成本。</p>
+  </div>
+</div>
+
+<!-- ================================================================
+     SCENE 10: INTEGRATION PIPELINE (165-197s)
+     ================================================================ -->
+<div id="scene10" class="scene" style="background:#FAFAF8;">
+  <div class="scene-num" id="s10-num">10</div>
+  <div class="blob blob-warm" style="width:350px;height:350px;top:-8%;right:-6%;opacity:0.13;" id="blob10a"></div>
+  <div class="scene-content" id="sc10">
+    <span class="label-mono" id="s10-label">拼在一起 · 场景：从零搭建个人博客</span>
+    <h2 class="display" id="s10-title" style="font-size:60px;max-width:950px;">五个概念怎样配合完成一整套工作</h2>
+    <div class="pipeline" id="s10-pipe" style="margin-top:16px;">
+      <div class="pipeline-step"><div class="label-mono" style="font-size:14px;margin-bottom:8px;">Step 1</div><div class="body-text" style="font-size:24px;margin:0 0 4px;"><strong>Claude.md</strong></div><div class="body-text" style="font-size:18px;margin:0;color:#999;">定义游戏规则</div></div>
+      <span class="pipeline-arrow">→</span>
+      <div class="pipeline-step"><div class="label-mono" style="font-size:14px;margin-bottom:8px;">Step 2</div><div class="body-text" style="font-size:24px;margin:0 0 4px;"><strong>Skill</strong></div><div class="body-text" style="font-size:18px;margin:0;color:#999;">加载专业能力</div></div>
+      <span class="pipeline-arrow">→</span>
+      <div class="pipeline-step"><div class="label-mono" style="font-size:14px;margin-bottom:8px;">Step 3</div><div class="body-text" style="font-size:24px;margin:0 0 4px;"><strong>MCP</strong></div><div class="body-text" style="font-size:18px;margin:0;color:#999;">连接外部工具</div></div>
+      <span class="pipeline-arrow">→</span>
+      <div class="pipeline-step"><div class="label-mono" style="font-size:14px;margin-bottom:8px;">Step 4</div><div class="body-text" style="font-size:24px;margin:0 0 4px;"><strong>Hooks</strong></div><div class="body-text" style="font-size:18px;margin:0;color:#999;">自动化护栏</div></div>
+      <span class="pipeline-arrow">→</span>
+      <div class="pipeline-step"><div class="label-mono" style="font-size:14px;margin-bottom:8px;">Step 5</div><div class="body-text" style="font-size:24px;margin:0 0 4px;"><strong>Subagent</strong></div><div class="body-text" style="font-size:18px;margin:0;color:#999;">并行执行</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SCENE 11: COMPLETE SYSTEM (197-211s)
+     ================================================================ -->
+<div id="scene11" class="scene" style="background:#F5F3F0;">
+  <div class="scene-num" id="s11-num">11</div>
+  <div class="scene-content" id="sc11" style="align-items:center;text-align:center;">
+    <h2 class="display" id="s11-title" style="font-size:64px;max-width:850px;">你感觉只是在聊天<br>但背后是一整条生产线</h2>
+    <div class="glass-card" id="s11-card" style="max-width:800px;">
+      <p class="body-text" style="margin:0;font-size:28px;text-align:left;">
+        <strong>Claude.md</strong> 设规则 → <strong>Skill</strong> 装能力 → <strong>MCP</strong> 连外部 → <strong>Hooks</strong> 自动守护 → <strong>Subagent</strong> 并行执行
+      </p>
+      <div style="margin-top:28px;padding-top:28px;border-top:1px solid #E5E5E3;">
+        <p class="body-text" style="margin:0;font-size:28px;text-align:left;">
+          你不是在<strong>操作机器</strong>，你是在<strong>管理一支 AI 团队</strong>。
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SCENE 12: SUMMARY TABLE (211-227s)
+     ================================================================ -->
+<div id="scene12" class="scene" style="background:#FAFAF8;">
+  <div class="scene-num" id="s12-num">12</div>
+  <div class="scene-content" id="sc12">
+    <span class="label-mono" id="s12-label">人话总结</span>
+    <h2 class="display" id="s12-title" style="font-size:64px;max-width:850px;">你只需要记住这几个类比</h2>
+    <div class="summary-table" id="s12-table" style="max-width:800px;">
+      <div class="summary-row"><div class="summary-cell">Claude.md</div><div class="summary-cell">贴在墙上的员工守则，不用每天重申</div></div>
+      <div class="summary-row"><div class="summary-cell">Skill</div><div class="summary-cell">预制菜说明书，加载即用</div></div>
+      <div class="summary-row"><div class="summary-cell">Hooks</div><div class="summary-cell">自动驾驶的传感器——检测到障碍物自动刹车</div></div>
+      <div class="summary-row"><div class="summary-cell">MCP</div><div class="summary-cell">USB-C 转接头，一个口连万物</div></div>
+      <div class="summary-row"><div class="summary-cell">Subagent</div><div class="summary-cell">主编的实习生团队，领活→干活→汇报→回收</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     SCENE 13: CLOSING (227-243s + fade to black over 2s)
+     ================================================================ -->
+<div id="scene13" class="scene" style="background:linear-gradient(135deg,#F5F0E8 0%,#FAFAF8 50%,#F5F3F0 100%);">
+  <div class="blob blob-warm" style="width:400px;height:400px;top:-5%;right:-5%;opacity:0.20;" id="blob13a"></div>
+  <div class="blob blob-warm" style="width:280px;height:280px;bottom:-8%;left:-5%;opacity:0.13;" id="blob13b"></div>
+  <div class="scene-content" id="sc13" style="align-items:center;text-align:center;">
+    <h2 class="display" id="s13-q1" style="font-size:58px;max-width:800px;font-weight:600;">Vibe Coding 不是"给 AI 打字就出网站"的玩具。</h2>
+    <div class="divider" id="s13-div"></div>
+    <h2 class="display" id="s13-q2" style="font-size:52px;max-width:800px;font-weight:300;margin-top:0;">它是一种新的工作方式——<br>你不是在<strong>操作机器</strong>，<br>你是在<strong style="font-weight:700;">管理一支 AI 团队</strong>。</h2>
+    <p class="label-mono" id="s13-sub" style="font-size:22px;margin-top:8px;">而这五个概念，就是这支团队的"人力资源体系"</p>
+    <p class="label-mono" id="s13-tags" style="font-size:16px;margin-top:24px;">Subagent · Hooks · MCP · Skill · Claude.md</p>
+  </div>
+</div>
+
+</div><!-- /root -->
+
+<script>
+window.__timelines = window.__timelines || {};
+var tl = gsap.timeline({ paused: true });
+
+// Scene transition helper: calm blur crossfade
+// Elements enter at T+0.6s (after scene becomes visible with blur)
+function blurCross(fromSceneId, toSceneId, T) {
+  var old = "#" + fromSceneId;
+  var nw = "#" + toSceneId;
+  tl.to(old, { filter: "blur(25px)", scale: 1.05, duration: 0.6, ease: "power1.in" }, T);
+  tl.to(old, { opacity: 0, duration: 0.4, ease: "power1.in" }, T + 0.4);
+  tl.fromTo(nw,
+    { filter: "blur(25px)", scale: 0.95, opacity: 0 },
+    { filter: "blur(25px)", scale: 0.95, opacity: 1, duration: 0.3, ease: "power1.inOut" }, T + 0.5);
+  tl.to(nw, { filter: "blur(0px)", scale: 1, duration: 0.6, ease: "power1.out" }, T + 0.8);
+}
+
+// Offset for element entrances after scene is visible (T + 0.6s)
+var E = 0.6;
+
+// === SCENE 1: TITLE (0-6s) ===
+tl.from("#s1-label", { y: 20, opacity: 0, duration: 0.5, ease: "power2.out" }, 0.15);
+tl.from("#s1-title", { y: 50, opacity: 0, duration: 0.7, ease: "power3.out" }, 0.4);
+tl.from("#s1-divider", { scaleX: 0, opacity: 0, duration: 0.4, ease: "power2.out" }, 0.85);
+tl.from("#s1-sub", { y: 25, opacity: 0, duration: 0.5, ease: "power2.out" }, 1.0);
+
+// Blob ambient
+tl.to("#blob1a", { scale: 1.08, duration: 8, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+tl.to("#blob1b", { scale: 1.06, x: 15, y: -10, duration: 10, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+tl.to("#noise", { opacity: 0.028, duration: 4, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+
+blurCross("scene1", "scene2", 8);
+
+// === SCENE 2: PHENOMENON (8.6-17s) ===
+tl.from("#s2-label", { y: 20, opacity: 0, duration: 0.4, ease: "power2.out" }, 8 + E);
+tl.from("#s2-title", { y: 40, opacity: 0, duration: 0.65, ease: "power3.out" }, 8 + E + 0.25);
+tl.from("#s2-quote", { x: -40, opacity: 0, duration: 0.6, ease: "expo.out" }, 8 + E + 0.65);
+tl.to("#blob2a", { scale: 1.1, x: -20, y: 15, duration: 7, ease: "sine.inOut", yoyo: true, repeat: 1 }, 8);
+
+blurCross("scene2", "scene3", 17);
+
+// === SCENE 3: PROBLEM (17.6-26s) ===
+tl.from("#s3-num", { y: -30, opacity: 0, duration: 0.5, ease: "power2.out" }, 17 + E);
+tl.from("#s3-label", { y: 20, opacity: 0, duration: 0.4, ease: "power2.out" }, 17 + E + 0.1);
+tl.from("#s3-title", { y: 40, opacity: 0, duration: 0.6, ease: "power3.out" }, 17 + E + 0.3);
+tl.from("#s3-card", { y: 40, opacity: 0, duration: 0.7, ease: "expo.out" }, 17 + E + 0.7);
+
+blurCross("scene3", "scene4", 26);
+
+// === SCENE 4: OVERVIEW (26.6-35s) ===
+tl.from("#s4-num", { y: -30, opacity: 0, duration: 0.5, ease: "power2.out" }, 26 + E);
+tl.from("#s4-label", { y: 20, opacity: 0, duration: 0.4, ease: "power2.out" }, 26 + E + 0.1);
+tl.from("#s4-title", { y: 40, opacity: 0, duration: 0.6, ease: "power3.out" }, 26 + E + 0.3);
+tl.to("#blob4a", { scale: 1.12, duration: 7, ease: "sine.inOut", yoyo: true, repeat: 1 }, 26);
+document.querySelectorAll("#s4-grid .concept-card").forEach(function(card, i) {
+  tl.from(card, { y: 35, opacity: 0, duration: 0.45, ease: "back.out(1.4)" }, 26 + E + 0.6 + i * 0.12);
+});
+
+blurCross("scene4", "scene5", 35);
+
+// === SCENE 5: SUBAGENT (35.6-44s) ===
+tl.from("#s5-num", { y: -30, opacity: 0, duration: 0.5, ease: "power2.out" }, 35 + E);
+tl.from("#s5-label", { y: 20, opacity: 0, duration: 0.4, ease: "power2.out" }, 35 + E + 0.1);
+tl.from("#s5-title", { x: -50, opacity: 0, duration: 0.7, ease: "expo.out" }, 35 + E + 0.3);
+tl.from("#s5-quote", { y: 30, opacity: 0, duration: 0.6, ease: "power3.out" }, 35 + E + 0.7);
+tl.from("#s5-desc", { y: 25, opacity: 0, duration: 0.5, ease: "power2.out" }, 35 + E + 1.2);
+
+blurCross("scene5", "scene6", 44);
+
+// === SCENE 6: HOOKS (44.6-53s) ===
+tl.from("#s6-num", { y: -30, opacity: 0, duration: 0.5, ease: "power2.out" }, 44 + E);
+tl.from("#s6-label", { y: 20, opacity: 0, duration: 0.4, ease: "power2.out" }, 44 + E + 0.1);
+tl.from("#s6-title", { x: -50, opacity: 0, duration: 0.7, ease: "expo.out" }, 44 + E + 0.3);
+tl.from("#s6-quote", { y: 30, opacity: 0, duration: 0.6, ease: "power3.out" }, 44 + E + 0.7);
+tl.from("#s6-card", { y: 40, opacity: 0, duration: 0.65, ease: "expo.out" }, 44 + E + 1.2);
+
+blurCross("scene6", "scene7", 53);
+
+// === SCENE 7: MCP (53.6-62s) ===
+tl.from("#s7-num", { y: -30, opacity: 0, duration: 0.5, ease: "power2.out" }, 53 + E);
+tl.from("#s7-label", { y: 20, opacity: 0, duration: 0.4, ease: "power2.out" }, 53 + E + 0.1);
+tl.from("#s7-title", { x: -50, opacity: 0, duration: 0.7, ease: "expo.out" }, 53 + E + 0.3);
+tl.from("#s7-quote", { y: 30, opacity: 0, duration: 0.6, ease: "power3.out" }, 53 + E + 0.7);
+tl.from("#s7-desc", { y: 25, opacity: 0, duration: 0.5, ease: "power2.out" }, 53 + E + 1.3);
+
+blurCross("scene7", "scene8", 62);
+
+// === SCENE 8: SKILL (62.6-71s) ===
+tl.from("#s8-num", { y: -30, opacity: 0, duration: 0.5, ease: "power2.out" }, 62 + E);
+tl.from("#s8-label", { y: 20, opacity: 0, duration: 0.4, ease: "power2.out" }, 62 + E + 0.1);
+tl.from("#s8-title", { x: -50, opacity: 0, duration: 0.7, ease: "expo.out" }, 62 + E + 0.3);
+tl.from("#s8-quote", { y: 30, opacity: 0, duration: 0.6, ease: "power3.out" }, 62 + E + 0.7);
+tl.from("#s8-desc", { y: 25, opacity: 0, duration: 0.5, ease: "power2.out" }, 62 + E + 1.2);
+tl.to("#blob8a", { scale: 1.1, x: -15, y: -10, duration: 7, ease: "sine.inOut", yoyo: true, repeat: 1 }, 62);
+
+blurCross("scene8", "scene9", 71);
+
+// === SCENE 9: CLAUDE.MD (71.6-80s) ===
+tl.from("#s9-num", { y: -30, opacity: 0, duration: 0.5, ease: "power2.out" }, 71 + E);
+tl.from("#s9-label", { y: 20, opacity: 0, duration: 0.4, ease: "power2.out" }, 71 + E + 0.1);
+tl.from("#s9-title", { x: -50, opacity: 0, duration: 0.7, ease: "expo.out" }, 71 + E + 0.3);
+tl.from("#s9-quote", { y: 30, opacity: 0, duration: 0.6, ease: "power3.out" }, 71 + E + 0.7);
+tl.from("#s9-desc", { y: 25, opacity: 0, duration: 0.5, ease: "power2.out" }, 71 + E + 1.2);
+
+blurCross("scene9", "scene10", 80);
+
+// === SCENE 10: INTEGRATION (80.6-91s) ===
+tl.from("#s10-num", { y: -30, opacity: 0, duration: 0.5, ease: "power2.out" }, 80 + E);
+tl.from("#s10-label", { y: 20, opacity: 0, duration: 0.4, ease: "power2.out" }, 80 + E + 0.1);
+tl.from("#s10-title", { y: 35, opacity: 0, duration: 0.6, ease: "power3.out" }, 80 + E + 0.3);
+tl.to("#blob10a", { scale: 1.1, duration: 9, ease: "sine.inOut", yoyo: true, repeat: 1 }, 80);
+document.querySelectorAll("#s10-pipe .pipeline-step").forEach(function(step, i) {
+  tl.from(step, { y: 35, opacity: 0, duration: 0.5, ease: "back.out(1.3)" }, 80 + E + 0.9 + i * 0.45);
+});
+
+blurCross("scene10", "scene11", 91);
+
+// === SCENE 11: COMPLETE SYSTEM (91.6-100s) ===
+tl.from("#s11-num", { y: -30, opacity: 0, duration: 0.5, ease: "power2.out" }, 91 + E);
+tl.from("#s11-title", { y: 40, opacity: 0, duration: 0.7, ease: "power3.out" }, 91 + E + 0.2);
+tl.from("#s11-card", { scale: 0.95, y: 30, opacity: 0, duration: 0.7, ease: "expo.out" }, 91 + E + 0.7);
+
+blurCross("scene11", "scene12", 100);
+
+// === SCENE 12: SUMMARY (100.6-109s) ===
+tl.from("#s12-num", { y: -30, opacity: 0, duration: 0.5, ease: "power2.out" }, 100 + E);
+tl.from("#s12-label", { y: 20, opacity: 0, duration: 0.4, ease: "power2.out" }, 100 + E + 0.1);
+tl.from("#s12-title", { y: 40, opacity: 0, duration: 0.6, ease: "power3.out" }, 100 + E + 0.3);
+document.querySelectorAll("#s12-table .summary-row").forEach(function(row, i) {
+  tl.from(row, { x: -30, opacity: 0, duration: 0.4, ease: "power2.out" }, 100 + E + 0.8 + i * 0.15);
+});
+
+blurCross("scene12", "scene13", 109);
+
+// === SCENE 13: CLOSING (109.6s → fade to black at 118s) ===
+tl.from("#s13-q1", { y: 40, opacity: 0, duration: 0.7, ease: "power3.out" }, 109 + E);
+tl.from("#s13-div", { scaleX: 0, opacity: 0, duration: 0.5, ease: "power2.out" }, 109 + E + 0.5);
+tl.from("#s13-q2", { y: 35, opacity: 0, duration: 0.7, ease: "power3.out" }, 109 + E + 0.9);
+tl.from("#s13-sub", { y: 25, opacity: 0, duration: 0.5, ease: "power2.out" }, 109 + E + 1.4);
+tl.from("#s13-tags", { y: 20, opacity: 0, duration: 0.5, ease: "power2.out" }, 109 + E + 1.8);
+tl.to("#blob13a", { scale: 1.1, duration: 8, ease: "sine.inOut", yoyo: true, repeat: 1 }, 109);
+tl.to("#blob13b", { scale: 1.07, x: 18, y: -12, duration: 9, ease: "sine.inOut", yoyo: true, repeat: 1 }, 109);
+
+// Final fade to black (allowed on last scene)
+tl.to("#scene13", { opacity: 0, duration: 1.2, ease: "power1.in" }, 118);
+tl.set("#scene13", { visibility: "hidden" }, 119.2);
+tl.to("#noise", { opacity: 0, duration: 0.8, ease: "power1.in" }, 118);
+
+window.__timelines["main"] = tl;
+</script>
+</body>
+</html>

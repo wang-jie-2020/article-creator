@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m unittest tests/test_input_normalizer.py -v)",
+      "Bash(python -m unittest tests/test_research_planner.py -v)",
+      "Bash(python -m unittest tests/test_evidence_builder.py -v)",
+      "Bash(python -m unittest tests/test_citation_validator.py -v)",
+      "Bash(python -m unittest tests/test_renderer.py -v)",
+      "Bash(mkdir -p \"d:/Code/what-i-do/article-creator/.claude/skills/article-generate\")",
+      "Bash(python -m unittest tests/test_skill_contract.py -v)",
+      "Bash(python -m unittest discover -s tests -p \"test_*.py\" -v)",
+      "Bash(python scripts/validate_article.py output/article.md output/evidence.json)",
+      "Bash(python -c \"import importlib.util, pathlib, sys; root=pathlib.Path\\('d:/Code/what-i-do/article-creator'\\); sys.path=[str\\(root/'scripts'\\)]; print\\(importlib.util.find_spec\\('article_generator'\\)\\)\")",
+      "Bash(claude -p \"/article-generate\" --permission-mode bypassPermissions --output-format text)",
+      "Bash(claude -c -p '{\"topic\":\"企业采用大模型的落地路径\",\"audience\":\"技术负责人\",\"tone\":\"专业、务实\",\"length\":\"medium\",\"whitelistDomains\":[\"openai.com\",\"anthropic.com\",\"mckinsey.com\"]}' --permission-mode bypassPermissions --output-format text)",
+      "Bash(npx hyperframes *)",
+      "Bash(pip install *)",
+      "Bash(node -e ' *)",
+      "Bash(python3 -c \"import kokoro_onnx; print\\('kokoro_onnx version:', kokoro_onnx.__version__\\)\")",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 \"d:/Code/what-i-do/article-creator/output/hyperframes/gen_tts.py\")",
+      "Bash(python3 -c \"from kokoro_onnx import Kokoro; import inspect; print\\(list\\(inspect.signature\\(Kokoro.__init__\\).parameters.keys\\(\\)\\)\\)\")",
+      "Bash(rm \"d:/Code/what-i-do/article-creator/.claude/skills/excellent-thumbnail-maker/scripts/yt-thumb.js\")",
+      "Bash(python3 -c \"import kokoro_onnx; import os; print\\(os.path.dirname\\(kokoro_onnx.__file__\\)\\)\")",
+      "Bash(ls \"C:/Users/jie.wang21/.pyenv/pyenv-win/versions/3.12.0/Lib/site-packages/kokoro_onnx/\" 2>&1 | head -20)",
+      "Read(//c/Users/jie.wang21/.pyenv/pyenv-win/versions/3.12.0/Lib/site-packages/kokoro_onnx/**)",
+      "Bash(python3 -c \"import json; f=open\\('C:/Users/jie.wang21/.pyenv/pyenv-win/versions/3.12.0/Lib/site-packages/kokoro_onnx/config.json'\\); d=json.load\\(f\\); print\\(json.dumps\\(d, indent=2\\)[:1000]\\)\")"
+    ],
+    "additionalDirectories": [
+      "d:\\Code\\what-i-do\\article-creator\\.claude\\skills",
+      "d:\\Code\\what-i-do\\article-creator\\.claude\\skills\\excellent-thumbnail-maker\\scripts"
+    ]
+  }
+}
