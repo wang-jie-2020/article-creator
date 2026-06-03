@@ -26,6 +26,15 @@ description: 面向技术编程问题的多源深度研究流程。结合 AI 搜
 
 按网络可达性分层，优先使用当前环境可用的最高层。
 
+## ClaudeCode 兼容说明
+
+本技能可在 Codex 与 ClaudeCode 中执行，核心流程一致，工具按“可用即用、不可用即降级”原则处理。
+
+- 不依赖单一平台专属 MCP；若 `firecrawl`/`exa` 不可用，自动切换到平台内置搜索与浏览能力。
+- ClaudeCode 下优先使用其可用的网络搜索、页面访问与本地文件能力；缺失能力时保持同样的证据门禁与输出结构。
+- 无论平台，结论结构与本地落盘结构保持一致：`report.md`、`conclusions.json`、`confidence-sources.json`、`key-data.csv`、`meta.json`。
+- 若平台策略限制外网访问，按“网络不可达严格策略”执行，禁止重试，直接降级。
+
 **Tier 1 — 境内优先**
 - 搜索：Codex 内置 `web_search`、Bing API
 - 抓取/浏览：Browser 插件（直接打开目标页面、截图、提取文本）
@@ -40,7 +49,21 @@ description: 面向技术编程问题的多源深度研究流程。结合 AI 搜
 - Browser 逐页手动抓取
 - 跳过确认不可达的外部源
 
-网络可达性自检后（见下文），根据 `network_tier` 自动选取对应层级工具。若高层工具不可用，向前一层降级。
+网络可达性自检后（见下文），根据 `network_tier` 自动选取对应层级工具。若高层工具不可达，直接降级到下一层，不进行重试。
+
+## 网络不可达严格策略（零重试）
+
+一旦判定为“网络不可达”或工具返回明确网络错误（连接失败、DNS 失败、超时、TLS 握手失败）：
+
+1. **禁止重试**：不执行任何自动重试、指数退避或二次探测。
+2. **立即降级**：按 `Tier 2 -> Tier 1 -> Tier 3` 单向降级，直至可执行。
+3. **记录证据**：在 `meta.json` 写入
+   - `network_degradation: true`
+   - `retry_policy: "disabled_on_network_unreachable"`
+   - `unreachable_targets: [...]`
+4. **报告透明**：在报告中明确说明“因网络不可达触发降级，未执行重试”。
+
+注：仅当用户明确要求人工再次探测网络时，才允许单次人工复测；默认流程仍不启用自动重试。
 
 ## 网络可达性自检（工作流前置）
 
@@ -57,7 +80,7 @@ curl -s --connect-timeout 5 -o /dev/null -w "%{http_code}" https://github.com
 - 仅 GitHub 通 → `network_tier: restricted`（受限，启用降级策略）
 - 全不通 → `network_tier: highly-restricted`（高度受限，纯本地模式）
 
-将结果写入 `meta.json` 的 `network_tier` 字段，并据此选择工具层和证据标准。
+将结果写入 `meta.json` 的 `network_tier` 字段，并据此选择工具层和证据标准。若判定为 `restricted` 或 `highly-restricted`，不执行重试，直接降级。
 
 ## 工作流程
 
@@ -147,7 +170,7 @@ curl -s --connect-timeout 5 -o /dev/null -w "%{http_code}" https://github.com
 **境内受限时的补充来源**（`network_tier = restricted` 或 `highly-restricted`）：
 - 国内技术社区：掘金、SegmentFault、知乎技术板块（Tier 4 补充，不用于关键结论主证）
 - 镜像站：npm 淘宝镜像、PyPI 清华镜像（版本和包信息核验）
-- GitHub 直连（通常可达，间歇不可用按超时重试 2 次处理）
+- GitHub 直连（若不可达，直接降级，不重试）
 
 ### 6) 深读关键来源（3-5 个）
 
@@ -261,6 +284,7 @@ research/
 - 明确区分事实、推断、预测
 - 不包含“无来源断言”
 - `network_tier = highly-restricted` 时，报告必须明确声明网络受限程度及降级策略
+- 网络不可达场景必须声明“零重试策略已触发”
 - 本地已落盘 `conclusions.json`、`confidence-sources.json`、`key-data.csv`
 
 ## 快速触发示例

@@ -27,7 +27,13 @@
       "Bash(python3 -c \"import json; f=open\\('C:/Users/jie.wang21/.pyenv/pyenv-win/versions/3.12.0/Lib/site-packages/kokoro_onnx/config.json'\\); d=json.load\\(f\\); print\\(json.dumps\\(d, indent=2\\)[:1000]\\)\")",
       "Bash(curl *)",
       "WebSearch",
-      "WebFetch(domain:developers.weixin.qq.com)"
+      "WebFetch(domain:developers.weixin.qq.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh api *)",
+      "WebFetch(domain:platform.openai.com)",
+      "Bash(python *)",
+      "Bash(gh repo *)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "additionalDirectories": [
       "d:\\Code\\what-i-do\\article-creator\\.claude\\skills",
